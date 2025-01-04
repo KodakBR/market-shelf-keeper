@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     watch: {
       usePolling: true
-    }
+    },
+    cors: true
   },
   plugins: [
     react(),

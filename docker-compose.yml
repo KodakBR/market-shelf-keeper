@@ -11,6 +11,8 @@ services:
       - VITE_API_URL=http://${HOST_IP:-localhost}:3001
     depends_on:
       - jsonserver
+    networks:
+      - app-network
 
   jsonserver:
     build:
@@ -20,3 +22,10 @@ services:
       - "3001:3001"
     volumes:
       - ./db.json:/app/db.json
+    command: json-server --watch /app/db.json --host 0.0.0.0 --port 3001
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
