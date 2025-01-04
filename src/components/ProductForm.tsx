@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -8,36 +8,57 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Camera, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface ProductFormProps {
-  onSubmit: (product: {
-    name: string;
-    expiryDate: Date;
-    quantity: number;
-    photo?: string;
-  }) => void;
+interface Product {
+  id: string;
+  name: string;
+  expiryDate: Date;
+  quantity: number;
+  photo?: string;
 }
 
-export const ProductForm = ({ onSubmit }: ProductFormProps) => {
+interface ProductFormProps {
+  onSubmit: (product: Product | Omit<Product, "id">) => void;
+  initialProduct?: Product | null;
+}
+
+export const ProductForm = ({ onSubmit, initialProduct }: ProductFormProps) => {
   const [name, setName] = useState("");
   const [date, setDate] = useState<Date>();
   const [quantity, setQuantity] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (initialProduct) {
+      setName(initialProduct.name);
+      setDate(new Date(initialProduct.expiryDate));
+      setQuantity(initialProduct.quantity.toString());
+      setPhoto(initialProduct.photo || null);
+    }
+  }, [initialProduct]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !date || !quantity) return;
 
-    onSubmit({
+    const productData = {
       name,
       expiryDate: date,
       quantity: Number(quantity),
       photo: photo || undefined,
-    });
+    };
 
-    setName("");
-    setDate(undefined);
-    setQuantity("");
-    setPhoto(null);
+    if (initialProduct) {
+      onSubmit({ ...productData, id: initialProduct.id });
+    } else {
+      onSubmit(productData);
+    }
+
+    if (!initialProduct) {
+      setName("");
+      setDate(undefined);
+      setQuantity("");
+      setPhoto(null);
+    }
   };
 
   const handlePhotoCapture = async () => {
@@ -122,7 +143,7 @@ export const ProductForm = ({ onSubmit }: ProductFormProps) => {
         )}
       </div>
       <Button type="submit" className="w-full md:w-auto">
-        Adicionar Produto
+        {initialProduct ? "Atualizar Produto" : "Adicionar Produto"}
       </Button>
     </form>
   );

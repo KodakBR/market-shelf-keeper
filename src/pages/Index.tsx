@@ -14,76 +14,106 @@ interface Product {
   photo?: string;
 }
 
-const STORAGE_KEY = "products_v1";
-const SYNC_INTERVAL = 5000; // 5 segundos
+const API_URL = "http://localhost:3001/products";
 
 const Index = () => {
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved, (key, value) => {
-        if (key === "expiryDate") return new Date(value);
-        return value;
-      });
-    }
-    return [];
-  });
-  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const { toast } = useToast();
 
-  // Função para carregar produtos do localStorage
-  const loadProducts = () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsedProducts = JSON.parse(saved, (key, value) => {
-        if (key === "expiryDate") return new Date(value);
-        return value;
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setProducts(data.map((product: any) => ({
+        ...product,
+        expiryDate: new Date(product.expiryDate)
+      })));
+    } catch (error) {
+      console.error("Erro ao carregar produtos:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os produtos.",
       });
-      setProducts(parsedProducts);
     }
   };
 
-  // Efeito para salvar produtos no localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  }, [products]);
-
-  // Efeito para sincronizar produtos periodicamente
-  useEffect(() => {
-    const syncInterval = setInterval(() => {
-      loadProducts();
-    }, SYNC_INTERVAL);
-
-    // Adicionar listener para storage events
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) {
-        loadProducts();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      clearInterval(syncInterval);
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    fetchProducts();
+    const interval = setInterval(fetchProducts, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleAddProduct = (product: Omit<Product, "id">) => {
-    const newProduct = { ...product, id: uuidv4() };
-    setProducts((prev) => [...prev, newProduct]);
-    toast({
-      title: "Produto adicionado",
-      description: "O produto foi adicionado com sucesso!",
-    });
+  const handleAddProduct = async (product: Omit<Product, "id">) => {
+    try {
+      const newProduct = { ...product, id: uuidv4() };
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProduct),
+      });
+
+      if (response.ok) {
+        await fetchProducts();
+        toast({
+          title: "Produto adicionado",
+          description: "O produto foi adicionado com sucesso!",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao adicionar produto:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o produto.",
+      });
+    }
   };
 
-  const handleRemoveProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    toast({
-      title: "Produto removido",
-      description: "O produto foi removido com sucesso!",
-    });
+  const handleUpdateProduct = async (updatedProduct: Product) => {
+    try {
+      const response = await fetch(`${API_URL}/${updatedProduct.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProduct),
+      });
+
+      if (response.ok) {
+        await fetchProducts();
+        setEditingProduct(null);
+        toast({
+          title: "Produto atualizado",
+          description: "O produto foi atualizado com sucesso!",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar produto:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o produto.",
+      });
+    }
+  };
+
+  const handleRemoveProduct = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        await fetchProducts();
+        toast({
+          title: "Produto removido",
+          description: "O produto foi removido com sucesso!",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao remover produto:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o produto.",
+      });
+    }
   };
 
   const sortedProducts = [...products].sort((a, b) =>
@@ -105,7 +135,10 @@ const Index = () => {
           </div>
 
           <div className="bg-card rounded-lg shadow-sm p-6">
-            <ProductForm onSubmit={handleAddProduct} />
+            <ProductForm 
+              onSubmit={editingProduct ? handleUpdateProduct : handleAddProduct}
+              initialProduct={editingProduct}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -114,6 +147,7 @@ const Index = () => {
                 key={product.id}
                 product={product}
                 onRemove={handleRemoveProduct}
+                onEdit={() => setEditingProduct(product)}
               />
             ))}
           </div>
