@@ -16,8 +16,7 @@ interface Product {
   photo?: string;
 }
 
-// Certifique-se de que a variável de ambiente VITE_API_URL está configurada corretamente
-const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/products`;
+const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}`;
 
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -28,25 +27,44 @@ const Index = () => {
 
   const fetchProducts = async () => {
     try {
-      console.log('Fetching products from:', API_URL);
-      const response = await fetch(API_URL);
+      console.log('Fetching products from:', `${API_URL}/products`);
+      const response = await fetch(`${API_URL}/products`);
       
       if (!response.ok) {
+        // Tentar carregar do backup se a requisição principal falhar
+        const backupResponse = await fetch(`${API_URL}/backup`);
+        if (backupResponse.ok) {
+          const backupData = await backupResponse.json();
+          setProducts(backupData.map((product: any) => ({
+            ...product,
+            expiryDate: new Date(product.expiryDate)
+          })));
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
       console.log('Received data:', data);
       
-      setProducts(data.map((product: any) => ({
+      const formattedProducts = data.map((product: any) => ({
         ...product,
         expiryDate: new Date(product.expiryDate)
-      })));
+      }));
+      
+      setProducts(formattedProducts);
+      
+      // Criar backup dos dados
+      await fetch(`${API_URL}/backup`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formattedProducts)
+      });
     } catch (error) {
       console.error("Erro ao carregar produtos:", error);
       toast({
         title: "Erro ao carregar produtos",
-        description: "Verifique se o servidor JSON está rodando na porta 3001",
+        description: "Tentando carregar dados do backup...",
         variant: "destructive"
       });
     }
@@ -54,7 +72,6 @@ const Index = () => {
 
   useEffect(() => {
     fetchProducts();
-    // Reduzindo a frequência de atualização para 30 segundos para evitar sobrecarga
     const interval = setInterval(fetchProducts, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -62,7 +79,7 @@ const Index = () => {
   const handleAddProduct = async (product: Omit<Product, "id">) => {
     try {
       const newProduct = { ...product, id: uuidv4() };
-      const response = await fetch(API_URL, {
+      const response = await fetch(`${API_URL}/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProduct),
@@ -81,7 +98,7 @@ const Index = () => {
       console.error("Erro ao adicionar produto:", error);
       toast({
         title: "Erro",
-        description: "Verifique se o servidor JSON está rodando",
+        description: "Não foi possível adicionar o produto.",
         variant: "destructive"
       });
     }
