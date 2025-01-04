@@ -14,7 +14,7 @@ interface Product {
   photo?: string;
 }
 
-const API_URL = "http://localhost:3001/products";
+const API_URL = `${import.meta.env.VITE_API_URL}/products`;
 
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
