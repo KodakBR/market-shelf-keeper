@@ -5,7 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Camera, Image } from "lucide-react";
+import { CalendarIcon, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -63,62 +63,18 @@ export const ProductForm = ({ onSubmit, initialProduct }: ProductFormProps) => {
     }
   };
 
-  const handlePhotoCapture = async () => {
-    try {
-      // Primeiro, verifica se o navegador suporta a API de mídia
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Seu navegador não suporta acesso à câmera");
-      }
-
-      // Solicita permissão e acesso à câmera
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment' // Tenta usar a câmera traseira em dispositivos móveis
-        } 
-      });
-
-      // Cria um elemento de vídeo para mostrar o preview
-      const video = document.createElement("video");
-      video.srcObject = stream;
-      video.setAttribute("playsinline", "true"); // Importante para iOS
-      
-      // Aguarda o vídeo estar pronto
-      await new Promise((resolve) => {
-        video.onloadedmetadata = () => {
-          video.play();
-          resolve(true);
-        };
-      });
-
-      // Configura o canvas com as dimensões do vídeo
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      // Captura o frame atual do vídeo
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Não foi possível criar contexto do canvas");
-      
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Converte para base64
-      const photoData = canvas.toDataURL("image/jpeg", 0.8);
-      setPhoto(photoData);
-      
-      // Importante: para de usar a câmera
-      stream.getTracks().forEach(track => track.stop());
-
-      toast({
-        title: "Sucesso",
-        description: "Foto capturada com sucesso!",
-      });
-    } catch (error) {
-      console.error("Erro ao capturar foto:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao acessar câmera",
-        description: "Verifique se você permitiu o acesso à câmera no seu navegador.",
-      });
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+        toast({
+          title: "Sucesso",
+          description: "Imagem carregada com sucesso!",
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -167,9 +123,20 @@ export const ProductForm = ({ onSubmit, initialProduct }: ProductFormProps) => {
         />
       </div>
       <div className="flex gap-2">
-        <Button type="button" variant="outline" onClick={handlePhotoCapture}>
-          <Camera className="mr-2 h-4 w-4" />
-          Tirar Foto
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoSelect}
+          className="hidden"
+          id="photo-input"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => document.getElementById('photo-input')?.click()}
+        >
+          <Image className="mr-2 h-4 w-4" />
+          Selecionar Imagem
         </Button>
         {photo && (
           <Button
@@ -178,7 +145,7 @@ export const ProductForm = ({ onSubmit, initialProduct }: ProductFormProps) => {
             onClick={() => window.open(photo, '_blank')}
           >
             <Image className="mr-2 h-4 w-4" />
-            Ver Foto
+            Ver Imagem
           </Button>
         )}
       </div>

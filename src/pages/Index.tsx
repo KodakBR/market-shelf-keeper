@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/components/ui/use-toast";
 import { ThemeProvider } from "next-themes";
 import { v4 as uuidv4 } from "uuid";
+import { Button } from "@/components/ui/button";
 
 interface Product {
   id: string;
@@ -19,6 +20,7 @@ const API_URL = `${import.meta.env.VITE_API_URL}/products`;
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showExpired, setShowExpired] = useState(false);
   const { toast } = useToast();
 
   const fetchProducts = async () => {
@@ -116,7 +118,14 @@ const Index = () => {
     }
   };
 
-  const sortedProducts = [...products].sort((a, b) =>
+  const filteredProducts = products.filter(product => {
+    if (showExpired) {
+      return new Date(product.expiryDate) < new Date();
+    }
+    return true;
+  });
+
+  const sortedProducts = [...filteredProducts].sort((a, b) =>
     new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
   );
 
@@ -139,6 +148,15 @@ const Index = () => {
               onSubmit={editingProduct ? handleUpdateProduct : handleAddProduct}
               initialProduct={editingProduct}
             />
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              variant={showExpired ? "destructive" : "outline"}
+              onClick={() => setShowExpired(!showExpired)}
+            >
+              {showExpired ? "Mostrar Todos" : "Mostrar Vencidos"}
+            </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
