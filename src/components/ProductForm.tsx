@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Camera, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Product {
   id: string;
@@ -26,6 +27,7 @@ export const ProductForm = ({ onSubmit, initialProduct }: ProductFormProps) => {
   const [date, setDate] = useState<Date>();
   const [quantity, setQuantity] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (initialProduct) {
@@ -63,22 +65,60 @@ export const ProductForm = ({ onSubmit, initialProduct }: ProductFormProps) => {
 
   const handlePhotoCapture = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Primeiro, verifica se o navegador suporta a API de mídia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Seu navegador não suporta acesso à câmera");
+      }
+
+      // Solicita permissão e acesso à câmera
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment' // Tenta usar a câmera traseira em dispositivos móveis
+        } 
+      });
+
+      // Cria um elemento de vídeo para mostrar o preview
       const video = document.createElement("video");
       video.srcObject = stream;
-      await video.play();
+      video.setAttribute("playsinline", "true"); // Importante para iOS
+      
+      // Aguarda o vídeo estar pronto
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resolve(true);
+        };
+      });
 
+      // Configura o canvas com as dimensões do vídeo
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      canvas.getContext("2d")?.drawImage(video, 0, 0);
       
-      const photoData = canvas.toDataURL("image/jpeg");
+      // Captura o frame atual do vídeo
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Não foi possível criar contexto do canvas");
+      
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Converte para base64
+      const photoData = canvas.toDataURL("image/jpeg", 0.8);
       setPhoto(photoData);
       
+      // Importante: para de usar a câmera
       stream.getTracks().forEach(track => track.stop());
+
+      toast({
+        title: "Sucesso",
+        description: "Foto capturada com sucesso!",
+      });
     } catch (error) {
-      console.error("Error capturing photo:", error);
+      console.error("Erro ao capturar foto:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao acessar câmera",
+        description: "Verifique se você permitiu o acesso à câmera no seu navegador.",
+      });
     }
   };
 
