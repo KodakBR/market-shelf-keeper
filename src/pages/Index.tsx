@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { ThemeProvider } from "next-themes";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
+import { ImageViewModal } from "@/components/ImageViewModal";
 
 interface Product {
   id: string;
@@ -21,6 +22,7 @@ const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showExpired, setShowExpired] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchProducts = async () => {
@@ -48,7 +50,17 @@ const Index = () => {
 
   const handleAddProduct = async (product: Omit<Product, "id">) => {
     try {
-      const newProduct = { ...product, id: uuidv4() };
+      // Se houver uma foto, vamos salvá-la em uma pasta específica
+      let photoUrl = product.photo;
+      if (product.photo) {
+        const timestamp = new Date().getTime();
+        const fileName = `product-${timestamp}.jpg`;
+        // Aqui você pode implementar a lógica para salvar a imagem em uma pasta
+        // Por enquanto, vamos manter a URL da imagem como está
+        photoUrl = product.photo;
+      }
+
+      const newProduct = { ...product, id: uuidv4(), photo: photoUrl };
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,6 +130,12 @@ const Index = () => {
     }
   };
 
+  const handleImageClick = (imageUrl?: string) => {
+    if (imageUrl) {
+      setSelectedImage(imageUrl);
+    }
+  };
+
   const filteredProducts = products.filter(product => {
     if (showExpired) {
       return new Date(product.expiryDate) < new Date();
@@ -166,6 +184,7 @@ const Index = () => {
                 product={product}
                 onRemove={handleRemoveProduct}
                 onEdit={() => setEditingProduct(product)}
+                onImageClick={() => handleImageClick(product.photo)}
               />
             ))}
           </div>
@@ -176,6 +195,12 @@ const Index = () => {
             </div>
           )}
         </div>
+
+        <ImageViewModal
+          isOpen={!!selectedImage}
+          onClose={() => setSelectedImage(null)}
+          imageUrl={selectedImage || undefined}
+        />
       </div>
     </ThemeProvider>
   );

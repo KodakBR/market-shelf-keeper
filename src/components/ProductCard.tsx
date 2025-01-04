@@ -1,8 +1,8 @@
-import { format, isAfter, isBefore, addDays, differenceInDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CheckCircle, AlertTriangle, XCircle, Image, Edit, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Pencil, Trash2, Image } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Product {
   id: string;
@@ -15,84 +15,44 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   onRemove: (id: string) => void;
-  onEdit: (product: Product) => void;
+  onEdit: () => void;
+  onImageClick: () => void;
 }
 
-export const ProductCard = ({ product, onRemove, onEdit }: ProductCardProps) => {
-  const today = new Date();
-  const warningDate = addDays(today, 30);
-  const isExpired = isBefore(new Date(product.expiryDate), today);
-  const isWarning =
-    isAfter(new Date(product.expiryDate), today) &&
-    isBefore(new Date(product.expiryDate), warningDate);
-
-  const daysUntilExpiry = differenceInDays(new Date(product.expiryDate), today);
-
-  const expiryText = isExpired
-    ? `Vencido há ${Math.abs(daysUntilExpiry)} dias`
-    : `Vence em ${daysUntilExpiry} dias`;
+export const ProductCard = ({ product, onRemove, onEdit, onImageClick }: ProductCardProps) => {
+  const isExpired = new Date(product.expiryDate) < new Date();
 
   return (
-    <div
-      className={cn(
-        "p-4 rounded-lg shadow-sm border transition-all duration-200 animate-slide-up",
-        "hover:shadow-md",
-        isExpired
-          ? "bg-red-50 border-product-expired"
-          : isWarning
-          ? "bg-amber-50 border-product-warning"
-          : "bg-green-50 border-product-valid"
+    <Card className={`overflow-hidden ${isExpired ? 'border-red-500' : ''}`}>
+      {product.photo && (
+        <div 
+          className="relative w-full aspect-video cursor-pointer"
+          onClick={onImageClick}
+        >
+          <img
+            src={product.photo}
+            alt={product.name}
+            className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+          />
+        </div>
       )}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-medium text-lg">{product.name}</h3>
-          <p className="text-sm text-gray-600">
-            Validade: {format(new Date(product.expiryDate), "PPP", { locale: ptBR })}
-          </p>
-          <p className="text-sm text-gray-600">Quantidade: {product.quantity}</p>
-          <p className="text-sm font-medium mt-1">{expiryText}</p>
-        </div>
-        <div className="flex flex-col items-end space-y-2">
-          <div className="flex items-center">
-            {isExpired ? (
-              <XCircle className="h-5 w-5 text-product-expired" />
-            ) : isWarning ? (
-              <AlertTriangle className="h-5 w-5 text-product-warning" />
-            ) : (
-              <CheckCircle className="h-5 w-5 text-product-valid" />
-            )}
-          </div>
-          <div className="flex gap-2">
-            {product.photo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.open(product.photo, '_blank')}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <Image className="h-4 w-4" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(product)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onRemove(product.id)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <CardContent className="p-4">
+        <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
+        <p className={`text-sm ${isExpired ? 'text-red-500' : 'text-muted-foreground'}`}>
+          Validade: {format(new Date(product.expiryDate), "PPP", { locale: ptBR })}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Quantidade: {product.quantity}
+        </p>
+      </CardContent>
+      <CardFooter className="p-4 pt-0 flex justify-end gap-2">
+        <Button variant="outline" size="icon" onClick={onEdit}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" onClick={() => onRemove(product.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
