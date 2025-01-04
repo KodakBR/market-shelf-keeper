@@ -1,6 +1,6 @@
-import { format, isAfter, isBefore, addDays } from "date-fns";
+import { format, isAfter, isBefore, addDays, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -9,6 +9,7 @@ interface Product {
   name: string;
   expiryDate: Date;
   quantity: number;
+  photo?: string;
 }
 
 interface ProductCardProps {
@@ -23,6 +24,12 @@ export const ProductCard = ({ product, onRemove }: ProductCardProps) => {
   const isWarning =
     isAfter(new Date(product.expiryDate), today) &&
     isBefore(new Date(product.expiryDate), warningDate);
+
+  const daysUntilExpiry = differenceInDays(new Date(product.expiryDate), today);
+
+  const expiryText = isExpired
+    ? `Vencido há ${Math.abs(daysUntilExpiry)} dias`
+    : `Vence em ${daysUntilExpiry} dias`;
 
   return (
     <div
@@ -43,6 +50,7 @@ export const ProductCard = ({ product, onRemove }: ProductCardProps) => {
             Validade: {format(new Date(product.expiryDate), "PPP", { locale: ptBR })}
           </p>
           <p className="text-sm text-gray-600">Quantidade: {product.quantity}</p>
+          <p className="text-sm font-medium mt-1">{expiryText}</p>
         </div>
         <div className="flex items-center space-x-2">
           {isExpired ? (
@@ -52,14 +60,26 @@ export const ProductCard = ({ product, onRemove }: ProductCardProps) => {
           ) : (
             <CheckCircle className="h-5 w-5 text-product-valid" />
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onRemove(product.id)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            Remover
-          </Button>
+          <div className="flex gap-2">
+            {product.photo && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open(product.photo, '_blank')}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <Image className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onRemove(product.id)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Remover
+            </Button>
+          </div>
         </div>
       </div>
     </div>
