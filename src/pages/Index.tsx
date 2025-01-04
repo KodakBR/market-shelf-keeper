@@ -16,7 +16,8 @@ interface Product {
   photo?: string;
 }
 
-const API_URL = `${import.meta.env.VITE_API_URL}/products`;
+// Certifique-se de que a variável de ambiente VITE_API_URL está configurada corretamente
+const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/products`;
 
 const Index = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,8 +28,16 @@ const Index = () => {
 
   const fetchProducts = async () => {
     try {
+      console.log('Fetching products from:', API_URL);
       const response = await fetch(API_URL);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Received data:', data);
+      
       setProducts(data.map((product: any) => ({
         ...product,
         expiryDate: new Date(product.expiryDate)
@@ -36,49 +45,44 @@ const Index = () => {
     } catch (error) {
       console.error("Erro ao carregar produtos:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os produtos.",
+        title: "Erro ao carregar produtos",
+        description: "Verifique se o servidor JSON está rodando na porta 3001",
+        variant: "destructive"
       });
     }
   };
 
   useEffect(() => {
     fetchProducts();
-    const interval = setInterval(fetchProducts, 5000);
+    // Reduzindo a frequência de atualização para 30 segundos para evitar sobrecarga
+    const interval = setInterval(fetchProducts, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const handleAddProduct = async (product: Omit<Product, "id">) => {
     try {
-      // Se houver uma foto, vamos salvá-la em uma pasta específica
-      let photoUrl = product.photo;
-      if (product.photo) {
-        const timestamp = new Date().getTime();
-        const fileName = `product-${timestamp}.jpg`;
-        // Aqui você pode implementar a lógica para salvar a imagem em uma pasta
-        // Por enquanto, vamos manter a URL da imagem como está
-        photoUrl = product.photo;
-      }
-
-      const newProduct = { ...product, id: uuidv4(), photo: photoUrl };
+      const newProduct = { ...product, id: uuidv4() };
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProduct),
       });
 
-      if (response.ok) {
-        await fetchProducts();
-        toast({
-          title: "Produto adicionado",
-          description: "O produto foi adicionado com sucesso!",
-        });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      await fetchProducts();
+      toast({
+        title: "Produto adicionado",
+        description: "O produto foi adicionado com sucesso!",
+      });
     } catch (error) {
       console.error("Erro ao adicionar produto:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível adicionar o produto.",
+        description: "Verifique se o servidor JSON está rodando",
+        variant: "destructive"
       });
     }
   };
