@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  frontend:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://jsonserver:3001
+    depends_on:
+      - jsonserver
+
+  jsonserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.jsonserver
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./db.json:/app/db.json
