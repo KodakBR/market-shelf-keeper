@@ -14,9 +14,12 @@ interface Product {
   photo?: string;
 }
 
+const STORAGE_KEY = "products_v1";
+const SYNC_INTERVAL = 5000; // 5 segundos
+
 const Index = () => {
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem("products");
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       return JSON.parse(saved, (key, value) => {
         if (key === "expiryDate") return new Date(value);
@@ -28,9 +31,43 @@ const Index = () => {
   
   const { toast } = useToast();
 
+  // Função para carregar produtos do localStorage
+  const loadProducts = () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsedProducts = JSON.parse(saved, (key, value) => {
+        if (key === "expiryDate") return new Date(value);
+        return value;
+      });
+      setProducts(parsedProducts);
+    }
+  };
+
+  // Efeito para salvar produtos no localStorage
   useEffect(() => {
-    localStorage.setItem("products", JSON.stringify(products));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
   }, [products]);
+
+  // Efeito para sincronizar produtos periodicamente
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      loadProducts();
+    }, SYNC_INTERVAL);
+
+    // Adicionar listener para storage events
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        loadProducts();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(syncInterval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   const handleAddProduct = (product: Omit<Product, "id">) => {
     const newProduct = { ...product, id: uuidv4() };
